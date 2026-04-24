@@ -8,19 +8,28 @@ import (
 )
 
 func main() {
-	fmt.Println("Server starting...")
+	fmt.Println("server starting...")
 
 	ser, err := net.Listen("tcp", ":8080")
 	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
+		log.Fatalf("failed to listen: %v", err)
 	}
 
-	fmt.Println("Listening on port 8080")
-	conn, err := ser.Accept()
-	if err != nil {
-		log.Fatalf("Failed to accept: %v", err)
+	fmt.Println("listening on port 8080")
+
+	for {
+		conn, err := ser.Accept()
+		if err != nil {
+			log.Println("accept error:", err)
+			continue
+		}
+		fmt.Printf("connection accepted from %v\n", conn.RemoteAddr())
+		go handleClient(conn)
 	}
-	fmt.Printf("connection accepted from %v", conn.RemoteAddr())
+
+}
+
+func handleClient(conn net.Conn) {
 	defer conn.Close()
 
 	scanner := bufio.NewScanner(conn)
@@ -28,7 +37,9 @@ func main() {
 		line := scanner.Text()
 		fmt.Println("input: ", line)
 
-		response := "Server received: " + line + "\n"
+		response := "server received: " + line + "\n"
 		conn.Write([]byte(response))
 	}
+
+	fmt.Printf("client disconnected: %v\n", conn.RemoteAddr())
 }
