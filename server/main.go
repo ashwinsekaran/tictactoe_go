@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"net"
@@ -21,4 +22,13 @@ func main() {
 	}
 	fmt.Printf("connection accepted from %v", conn.RemoteAddr())
 	defer conn.Close()
+
+	scanner := bufio.NewScanner(conn)
+	for scanner.Scan() {
+		line := scanner.Text()
+		fmt.Println("input: ", line)
+
+		response := "Server received: " + line + "\n"
+		conn.Write([]byte(response))
+	}
 }
