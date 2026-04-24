@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"net"
@@ -16,6 +15,7 @@ func main() {
 	}
 
 	fmt.Println("listening on port 8080")
+	l := &lobby{}
 
 	for {
 		conn, err := ser.Accept()
@@ -24,22 +24,36 @@ func main() {
 			continue
 		}
 		fmt.Printf("connection accepted from %v\n", conn.RemoteAddr())
-		go handleClient(conn)
+		go handleClient(conn, l)
 	}
 
 }
 
-func handleClient(conn net.Conn) {
+func handleClient(conn net.Conn, l *lobby) {
 	defer conn.Close()
 
-	scanner := bufio.NewScanner(conn)
-	for scanner.Scan() {
-		line := scanner.Text()
-		fmt.Println("input: ", line)
+	conn.Write([]byte("Waiting for opponent...\n"))
 
-		response := "server received: " + line + "\n"
-		conn.Write([]byte(response))
+	opponent, paired := l.join(conn)
+
+	if !paired {
+		fmt.Printf("%v is waiting for opponent\n", conn.RemoteAddr())
+		return
 	}
 
-	fmt.Printf("client disconnected: %v\n", conn.RemoteAddr())
+	fmt.Printf("Pairing %v with %v\n", conn.RemoteAddr(), opponent.RemoteAddr())
+	conn.Write([]byte("Opponent found! Game starting...\n"))
+	opponent.Write([]byte("Opponent found! Game starting...\n"))
+	//defer conn.Close()
+	//
+	//scanner := bufio.NewScanner(conn)
+	//for scanner.Scan() {
+	//	line := scanner.Text()
+	//	fmt.Println("input: ", line)
+	//
+	//	response := "server received: " + line + "\n"
+	//	conn.Write([]byte(response))
+	//}
+	//
+	//fmt.Printf("client disconnected: %v\n", conn.RemoteAddr())
 }
