@@ -8,9 +8,6 @@ import (
 )
 
 func run(xConn, oConn net.Conn, l *lobby) {
-	//defer xConn.Close()
-	//defer oConn.Close()
-
 	var b board
 
 	players := [2]net.Conn{xConn, oConn}
