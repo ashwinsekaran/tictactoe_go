@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 )
 
 func main() {
@@ -11,7 +12,7 @@ func main() {
 
 	ser, err := net.Listen("tcp", ":8080")
 	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
+		log.Fatalf("failed to listen: %v", err)
 	}
 
 	fmt.Println("Listening on port 8080")
@@ -20,17 +21,30 @@ func main() {
 	for {
 		conn, err := ser.Accept()
 		if err != nil {
-			log.Println("Accept error:", err)
+			log.Println("accept error:", err)
 			continue
 		}
 		fmt.Printf("Connection accepted from %v\n", conn.RemoteAddr())
+
+		tcpConn := conn.(*net.TCPConn)
+		if err := tcpConn.SetKeepAlive(true); err != nil {
+			log.Printf("keepalive error for %v: %v", conn.RemoteAddr(), err)
+		}
+		if err := tcpConn.SetKeepAlivePeriod(30 * time.Second); err != nil {
+			log.Printf("keepalive period error for %v: %v", conn.RemoteAddr(), err)
+		}
+
 		go handleClient(conn, l)
 	}
 
 }
 
 func handleClient(conn net.Conn, l *lobby) {
-	conn.Write([]byte("Waiting for opponent...\n"))
+	if _, err := conn.Write([]byte("Waiting for opponent...\n")); err != nil {
+		log.Printf("write error to %v: %v", conn.RemoteAddr(), err)
+		conn.Close()
+		return
+	}
 
 	opponent, paired := l.join(conn)
 

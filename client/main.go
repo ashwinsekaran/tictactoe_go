@@ -30,7 +30,10 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		line := scanner.Text()
-		conn.Write([]byte(line + "\n"))
+		if _, err := conn.Write([]byte(line + "\n")); err != nil {
+			log.Println("write error:", err)
+			return
+		}
 
 		select {
 		case <-done:
