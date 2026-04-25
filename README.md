@@ -9,14 +9,16 @@ A networked Tic-Tac-Toe game written in Go. Two players connect to a server over
 ```
 tictactoe_go/
 ├── server/
-│   ├── main.go     — entry point, accepts TCP connections, spawns a goroutine per client
-│   ├── lobby.go    — pairs two waiting players together using a mutex-protected waiting room
-│   ├── game.go     — board representation, move placement, win/draw detection
-│   └── run.go      — game loop, turn management, play again flow
+│   ├── main.go        — entry point, accepts TCP connections, spawns a goroutine per client
+│   ├── lobby.go       — pairs two waiting players together using a mutex-protected waiting room
+│   ├── game.go        — board representation, move placement, win/draw detection
+│   ├── run.go         — starts game, manages turns, handles play again flow
+│   ├── game_test.go   — unit tests for board logic (place, winner, isFull)
+│   └── lobby_test.go  — unit tests for lobby pairing logic
 ├── client/
 │   └── main.go     — connects to server, two goroutines for reading server messages and stdin
-└── test/
-    └── main.go     — automated test script, simulates N simultaneous games with bot clients
+└── simulate/
+    └── main.go     — automated simulation script, simulates N simultaneous games with bot clients
 ```
 
 ---
@@ -72,22 +74,37 @@ You can run 1, 10, or 100 games at the same time by opening more client terminal
 
 ---
 
-## Automated Test
+## Unit Tests
+
+```bash
+# run all unit tests
+go test ./server
+
+# run with details
+go test ./server -v
+
+# run a specific test
+go test ./server -run TestWinnerTopRow
+```
+
+---
+
+## Automated Simulation
 
 The test script starts the server automatically and simulates bot clients playing full games.
 
 ```bash
 # run 1 game (2 bot clients)
-go run ./test -games 1
+go run ./simulate -games 1
 
 # run 10 simultaneous games (20 bot clients)
-go run ./test -games 10
+go run ./simulate -games 10
 
 # run 100 simultaneous games (200 bot clients)
-go run ./test -games 100
+go run ./simulate -games 100
 
 # see all options
-go run ./test -help
+go run ./simulate -help
 ```
 
 No need to start the server manually — the test script handles it.
