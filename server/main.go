@@ -40,5 +40,5 @@ func handleClient(conn net.Conn, l *lobby) {
 	}
 
 	fmt.Printf("Pairing %v with %v\n", conn.RemoteAddr(), opponent.RemoteAddr())
-	run(opponent, conn)
+	run(opponent, conn, l)
 }

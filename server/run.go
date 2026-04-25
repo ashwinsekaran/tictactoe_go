@@ -7,9 +7,9 @@ import (
 	"strings"
 )
 
-func run(xConn, oConn net.Conn) {
-	defer xConn.Close()
-	defer oConn.Close()
+func run(xConn, oConn net.Conn, l *lobby) {
+	//defer xConn.Close()
+	//defer oConn.Close()
 
 	var b board
 
@@ -63,15 +63,42 @@ func run(xConn, oConn net.Conn) {
 			current.Write([]byte("You win!\n"))
 			other.Write([]byte("You lose!\n"))
 			fmt.Printf("Player %s wins!\n", w)
-			return
+			break
 		}
 
 		if b.isFull() {
 			write("It's a draw!\n")
 			fmt.Println("Game ended in a draw")
-			return
+			break
 		}
 
 	}
 
+	go handlePlayAgain(xConn, l)
+	go handlePlayAgain(oConn, l)
+}
+
+func handlePlayAgain(conn net.Conn, l *lobby) {
+	conn.Write([]byte("Do you want to play again? (y/n):\n"))
+
+	scanner := bufio.NewScanner(conn)
+	if !scanner.Scan() {
+		conn.Close()
+		return
+	}
+
+	answer := strings.TrimSpace(strings.ToLower(scanner.Text()))
+	if answer != "y" {
+		conn.Write([]byte("Thanks for playing. Goodbye!\n"))
+		conn.Close()
+		return
+	}
+
+	conn.Write([]byte("Waiting for opponent...\n"))
+	opponent, paired := l.join(conn)
+	if !paired {
+		return
+	}
+
+	run(opponent, conn, l)
 }
