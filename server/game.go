@@ -1,7 +1,9 @@
 package main
 
+// board is a 3x3 grid — empty cell is "", played cell is "X" or "O"
 type board [3][3]string
 
+// display renders the board as a human-readable string for terminal output
 func (b *board) display() string {
 	result := "\n"
 	for i, row := range b {
@@ -23,6 +25,7 @@ func (b *board) display() string {
 	return result
 }
 
+// place puts a symbol at row,col — returns false if the cell is already taken
 func (b *board) place(row, col int, symbol string) bool {
 	if b[row][col] != "" {
 		return false
@@ -31,6 +34,7 @@ func (b *board) place(row, col int, symbol string) bool {
 	return true
 }
 
+// isFull returns true when no empty cells remain — used to detect a draw
 func (b *board) isFull() bool {
 	for _, row := range b {
 		for _, col := range row {
@@ -42,16 +46,18 @@ func (b *board) isFull() bool {
 	return true
 }
 
+// winner checks all 8 winning lines (3 rows, 3 cols, 2 diagonals)
+// returns the winning symbol or "" if no winner yet
 func (b *board) winner() string {
 	lines := [8][3][2]int{
-		{{0, 0}, {0, 1}, {0, 2}},
-		{{1, 0}, {1, 1}, {1, 2}},
-		{{2, 0}, {2, 1}, {2, 2}},
-		{{0, 0}, {1, 0}, {2, 0}},
-		{{0, 1}, {1, 1}, {2, 1}},
-		{{0, 2}, {1, 2}, {2, 2}},
-		{{0, 0}, {1, 1}, {2, 2}},
-		{{0, 2}, {1, 1}, {2, 0}},
+		{{0, 0}, {0, 1}, {0, 2}}, // top row
+		{{1, 0}, {1, 1}, {1, 2}}, // middle row
+		{{2, 0}, {2, 1}, {2, 2}}, // bottom row
+		{{0, 0}, {1, 0}, {2, 0}}, // left col
+		{{0, 1}, {1, 1}, {2, 1}}, // middle col
+		{{0, 2}, {1, 2}, {2, 2}}, // right col
+		{{0, 0}, {1, 1}, {2, 2}}, // diagonal top-left
+		{{0, 2}, {1, 1}, {2, 0}}, // diagonal top-right
 	}
 	for _, line := range lines {
 		a := b[line[0][0]][line[0][1]]

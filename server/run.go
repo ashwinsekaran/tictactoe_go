@@ -8,6 +8,9 @@ import (
 	"strings"
 )
 
+// startGame runs a full game between two players. xConn is always X and goes first.
+// This function owns both connections for its lifetime — no other goroutine touches them.
+// Connections are not closed here; handlePlayAgain decides whether to close or reuse them.
 func startGame(xConn, oConn net.Conn, l *lobby) {
 	var b board
 
@@ -36,12 +39,14 @@ func startGame(xConn, oConn net.Conn, l *lobby) {
 
 	writeBothPlayers(b.display())
 
+	// turn alternates between 0 and 1 using 1-turn trick: 0→1→0→1...
 	for turn := 0; ; turn = 1 - turn {
 		player1 := players[turn]
 		player2 := players[1-turn]
 		symbol := symbols[turn]
 
 		if _, err := player1.Write([]byte(fmt.Sprintf("Your turn (%s) - enter row,col (e.g. 0,0 for first cell):\n", symbol))); err != nil {
+			// Write failed means player1 disconnected — notify player2 and exit
 			log.Printf("write error to %v: %v", player1.RemoteAddr(), err)
 			if _, err := player2.Write([]byte("Opponent disconnected. You win!\n")); err != nil {
 				log.Printf("write error to %v: %v", player2.RemoteAddr(), err)
@@ -54,6 +59,7 @@ func startGame(xConn, oConn net.Conn, l *lobby) {
 			log.Printf("write error to %v: %v", player2.RemoteAddr(), err)
 		}
 
+		// Block here until player1 sends a move — scanner.Scan() returns false on disconnect
 		scanner := bufio.NewScanner(player1)
 		if !scanner.Scan() {
 			if _, err := player2.Write([]byte("Opponent disconnected. You win!\n")); err != nil {
@@ -72,7 +78,7 @@ func startGame(xConn, oConn net.Conn, l *lobby) {
 			if _, err := player1.Write([]byte("Invalid input. Please try again (e.g. 1,1)\n")); err != nil {
 				log.Printf("write error to %v: %v", player1.RemoteAddr(), err)
 			}
-			turn = 1 - turn
+			turn = 1 - turn // undo turn flip so same player goes again
 			continue
 		}
 
@@ -80,7 +86,7 @@ func startGame(xConn, oConn net.Conn, l *lobby) {
 			if _, err := player1.Write([]byte("Cell is already taken. Please try again.\n")); err != nil {
 				log.Printf("write error to %v: %v", player1.RemoteAddr(), err)
 			}
-			turn = 1 - turn
+			turn = 1 - turn // undo turn flip so same player goes again
 			continue
 		}
 
@@ -94,7 +100,7 @@ func startGame(xConn, oConn net.Conn, l *lobby) {
 				log.Printf("write error to %v: %v", player2.RemoteAddr(), err)
 			}
 			fmt.Printf("Player %s wins!\n", winner)
-			break
+			break // break exits the loop, allowing play again logic below to run
 		}
 
 		if b.isFull() {
@@ -104,10 +110,15 @@ func startGame(xConn, oConn net.Conn, l *lobby) {
 		}
 	}
 
+	// Each player independently decides whether to play again —
+	// no synchronisation needed, lobby handles re-pairing naturally
 	go handlePlayAgain(xConn, l)
 	go handlePlayAgain(oConn, l)
 }
 
+// handlePlayAgain asks one player if they want to play again.
+// If yes, puts them back in the lobby — they may be paired with any waiting player.
+// If no, closes their connection.
 func handlePlayAgain(conn net.Conn, l *lobby) {
 	if _, err := conn.Write([]byte("Do you want to play again? (y/n):\n")); err != nil {
 		log.Printf("write error to %v: %v", conn.RemoteAddr(), err)
@@ -136,6 +147,7 @@ func handlePlayAgain(conn net.Conn, l *lobby) {
 		return
 	}
 
+	// Re-enter the lobby — if another player is already waiting, game starts immediately
 	opponent, paired := l.join(conn)
 	if !paired {
 		return
