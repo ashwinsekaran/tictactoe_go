@@ -39,6 +39,10 @@ func startGame(xConn, oConn net.Conn, l *lobby) {
 
 	writeBothPlayers(b.display())
 
+	// scanners created once per connection and reused across turns — avoids losing
+	// buffered data that would occur if a new scanner was created each iteration
+	scanners := [2]*bufio.Scanner{bufio.NewScanner(xConn), bufio.NewScanner(oConn)}
+
 	// turn alternates between 0 and 1 using 1-turn trick: 0→1→0→1...
 	for turn := 0; ; turn = 1 - turn {
 		player1 := players[turn]
@@ -60,8 +64,7 @@ func startGame(xConn, oConn net.Conn, l *lobby) {
 		}
 
 		// Block here until player1 sends a move — scanner.Scan() returns false on disconnect
-		scanner := bufio.NewScanner(player1)
-		if !scanner.Scan() {
+		if !scanners[turn].Scan() {
 			if _, err := player2.Write([]byte("Opponent disconnected. You win!\n")); err != nil {
 				log.Printf("write error to %v: %v", player2.RemoteAddr(), err)
 			}
@@ -70,7 +73,7 @@ func startGame(xConn, oConn net.Conn, l *lobby) {
 			return
 		}
 
-		input := strings.TrimSpace(scanner.Text())
+		input := strings.TrimSpace(scanners[turn].Text())
 		var row, col int
 
 		_, err := fmt.Sscanf(input, "%d,%d", &row, &col)

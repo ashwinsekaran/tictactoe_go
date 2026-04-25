@@ -44,7 +44,11 @@ Server listens on port 8080. Keep this running in its own terminal.
 Open a new terminal for each player:
 
 ```bash
+# connect to server on same machine
 go run ./client
+
+# connect to server on a remote machine
+go run ./client -server 192.168.1.10:8080
 ```
 
 - First client waits for an opponent
