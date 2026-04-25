@@ -7,23 +7,23 @@ import (
 )
 
 func main() {
-	fmt.Println("server starting...")
+	fmt.Println("Server starting...")
 
 	ser, err := net.Listen("tcp", ":8080")
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Fatalf("Failed to listen: %v", err)
 	}
 
-	fmt.Println("listening on port 8080")
+	fmt.Println("Listening on port 8080")
 	l := &lobby{}
 
 	for {
 		conn, err := ser.Accept()
 		if err != nil {
-			log.Println("accept error:", err)
+			log.Println("Accept error:", err)
 			continue
 		}
-		fmt.Printf("connection accepted from %v\n", conn.RemoteAddr())
+		fmt.Printf("Connection accepted from %v\n", conn.RemoteAddr())
 		go handleClient(conn, l)
 	}
 

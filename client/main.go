@@ -11,11 +11,11 @@ import (
 func main() {
 	conn, err := net.Dial("tcp", "localhost:8080")
 	if err != nil {
-		log.Fatalf("could not connect to server: %v", err)
+		log.Fatalf("Could not connect to server: %v", err)
 	}
 	defer conn.Close()
 
-	fmt.Println("connected to server")
+	fmt.Println("Connected to server")
 
 	done := make(chan struct{})
 
@@ -24,7 +24,7 @@ func main() {
 		for scanner.Scan() {
 			fmt.Println(scanner.Text())
 		}
-		fmt.Println("disconnected from server.")
+		fmt.Println("Disconnected from server.")
 		close(done)
 	}()
 	scanner := bufio.NewScanner(os.Stdin)

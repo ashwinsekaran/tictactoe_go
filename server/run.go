@@ -35,6 +35,7 @@ func run(xConn, oConn net.Conn, l *lobby) {
 		if !scanner.Scan() {
 			other.Write([]byte("Opponent disconnected. You win!\n"))
 			fmt.Printf("Player %s disconnected\n", symbol)
+			go handlePlayAgain(other, l)
 			return
 		}
 
