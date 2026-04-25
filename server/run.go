@@ -17,16 +17,22 @@ func startGame(xConn, oConn net.Conn, l *lobby) {
 	players := [2]net.Conn{xConn, oConn}
 	symbols := [2]string{"X", "O"}
 
-	writeBothPlayers := func(msg string) {
+	// returns false if either write fails — caller should stop the game
+	writeBothPlayers := func(msg string) bool {
 		if _, err := xConn.Write([]byte(msg)); err != nil {
 			log.Printf("write error to X %v: %v", xConn.RemoteAddr(), err)
+			return false
 		}
 		if _, err := oConn.Write([]byte(msg)); err != nil {
 			log.Printf("write error to O %v: %v", oConn.RemoteAddr(), err)
+			return false
 		}
+		return true
 	}
 
-	writeBothPlayers("Game started\n")
+	if !writeBothPlayers("Game started\n") {
+		return
+	}
 
 	if _, err := xConn.Write([]byte("You are X\n")); err != nil {
 		log.Printf("write error to X %v: %v", xConn.RemoteAddr(), err)
@@ -37,7 +43,9 @@ func startGame(xConn, oConn net.Conn, l *lobby) {
 		return
 	}
 
-	writeBothPlayers(b.display())
+	if !writeBothPlayers(b.display()) {
+		return
+	}
 
 	// scanners created once per connection and reused across turns — avoids losing
 	// buffered data that would occur if a new scanner was created each iteration
@@ -61,6 +69,8 @@ func startGame(xConn, oConn net.Conn, l *lobby) {
 
 		if _, err := player2.Write([]byte("Waiting for opponent's move...\n")); err != nil {
 			log.Printf("write error to %v: %v", player2.RemoteAddr(), err)
+			go handlePlayAgain(player1, l)
+			return
 		}
 
 		// Block here until player1 sends a move — scanner.Scan() returns false on disconnect
@@ -93,7 +103,9 @@ func startGame(xConn, oConn net.Conn, l *lobby) {
 			continue
 		}
 
-		writeBothPlayers(b.display())
+		if !writeBothPlayers(b.display()) {
+			return
+		}
 
 		if winner := b.winner(); winner != "" {
 			if _, err := player1.Write([]byte("You win!\n")); err != nil {
@@ -107,7 +119,9 @@ func startGame(xConn, oConn net.Conn, l *lobby) {
 		}
 
 		if b.isFull() {
-			writeBothPlayers("It's a draw!\n")
+			if !writeBothPlayers("It's a draw!\n") {
+				return
+			}
 			fmt.Println("Game ended in a draw")
 			break
 		}
