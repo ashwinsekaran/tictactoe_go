@@ -24,7 +24,7 @@ func main() {
 		for scanner.Scan() {
 			fmt.Println(scanner.Text())
 		}
-		fmt.Println("server disconnected")
+		fmt.Println("disconnected from server.")
 		close(done)
 	}()
 	scanner := bufio.NewScanner(os.Stdin)
