@@ -22,6 +22,7 @@ func (b *board) display() string {
 	}
 	return result
 }
+
 func (b *board) place(row, col int, symbol string) bool {
 	if b[row][col] != "" {
 		return false

@@ -8,13 +8,13 @@ import (
 	"strings"
 )
 
-func run(xConn, oConn net.Conn, l *lobby) {
+func startGame(xConn, oConn net.Conn, l *lobby) {
 	var b board
 
 	players := [2]net.Conn{xConn, oConn}
 	symbols := [2]string{"X", "O"}
 
-	writeBoth := func(msg string) {
+	writeBothPlayers := func(msg string) {
 		if _, err := xConn.Write([]byte(msg)); err != nil {
 			log.Printf("write error to X %v: %v", xConn.RemoteAddr(), err)
 		}
@@ -23,7 +23,7 @@ func run(xConn, oConn net.Conn, l *lobby) {
 		}
 	}
 
-	writeBoth("Game started\n")
+	writeBothPlayers("Game started\n")
 
 	if _, err := xConn.Write([]byte("You are X\n")); err != nil {
 		log.Printf("write error to X %v: %v", xConn.RemoteAddr(), err)
@@ -34,33 +34,33 @@ func run(xConn, oConn net.Conn, l *lobby) {
 		return
 	}
 
-	writeBoth(b.display())
+	writeBothPlayers(b.display())
 
 	for turn := 0; ; turn = 1 - turn {
-		current := players[turn]
-		other := players[1-turn]
+		player1 := players[turn]
+		player2 := players[1-turn]
 		symbol := symbols[turn]
 
-		if _, err := current.Write([]byte(fmt.Sprintf("Your turn (%s) - enter row,col (e.g. 0,0 for first cell):\n", symbol))); err != nil {
-			log.Printf("write error to %v: %v", current.RemoteAddr(), err)
-			if _, err := other.Write([]byte("Opponent disconnected. You win!\n")); err != nil {
-				log.Printf("write error to %v: %v", other.RemoteAddr(), err)
+		if _, err := player1.Write([]byte(fmt.Sprintf("Your turn (%s) - enter row,col (e.g. 0,0 for first cell):\n", symbol))); err != nil {
+			log.Printf("write error to %v: %v", player1.RemoteAddr(), err)
+			if _, err := player2.Write([]byte("Opponent disconnected. You win!\n")); err != nil {
+				log.Printf("write error to %v: %v", player2.RemoteAddr(), err)
 			}
-			go handlePlayAgain(other, l)
+			go handlePlayAgain(player2, l)
 			return
 		}
 
-		if _, err := other.Write([]byte("Waiting for opponent's move...\n")); err != nil {
-			log.Printf("write error to %v: %v", other.RemoteAddr(), err)
+		if _, err := player2.Write([]byte("Waiting for opponent's move...\n")); err != nil {
+			log.Printf("write error to %v: %v", player2.RemoteAddr(), err)
 		}
 
-		scanner := bufio.NewScanner(current)
+		scanner := bufio.NewScanner(player1)
 		if !scanner.Scan() {
-			if _, err := other.Write([]byte("Opponent disconnected. You win!\n")); err != nil {
-				log.Printf("write error to %v: %v", other.RemoteAddr(), err)
+			if _, err := player2.Write([]byte("Opponent disconnected. You win!\n")); err != nil {
+				log.Printf("write error to %v: %v", player2.RemoteAddr(), err)
 			}
 			fmt.Printf("Player %s disconnected\n", symbol)
-			go handlePlayAgain(other, l)
+			go handlePlayAgain(player2, l)
 			return
 		}
 
@@ -69,36 +69,36 @@ func run(xConn, oConn net.Conn, l *lobby) {
 
 		_, err := fmt.Sscanf(input, "%d,%d", &row, &col)
 		if err != nil || row < 0 || row > 2 || col < 0 || col > 2 {
-			if _, err := current.Write([]byte("Invalid input. Please try again (e.g. 1,1)\n")); err != nil {
-				log.Printf("write error to %v: %v", current.RemoteAddr(), err)
+			if _, err := player1.Write([]byte("Invalid input. Please try again (e.g. 1,1)\n")); err != nil {
+				log.Printf("write error to %v: %v", player1.RemoteAddr(), err)
 			}
 			turn = 1 - turn
 			continue
 		}
 
 		if !b.place(row, col, symbol) {
-			if _, err := current.Write([]byte("Cell is already taken. Please try again.\n")); err != nil {
-				log.Printf("write error to %v: %v", current.RemoteAddr(), err)
+			if _, err := player1.Write([]byte("Cell is already taken. Please try again.\n")); err != nil {
+				log.Printf("write error to %v: %v", player1.RemoteAddr(), err)
 			}
 			turn = 1 - turn
 			continue
 		}
 
-		writeBoth(b.display())
+		writeBothPlayers(b.display())
 
-		if w := b.winner(); w != "" {
-			if _, err := current.Write([]byte("You win!\n")); err != nil {
-				log.Printf("write error to %v: %v", current.RemoteAddr(), err)
+		if winner := b.winner(); winner != "" {
+			if _, err := player1.Write([]byte("You win!\n")); err != nil {
+				log.Printf("write error to %v: %v", player1.RemoteAddr(), err)
 			}
-			if _, err := other.Write([]byte("You lose!\n")); err != nil {
-				log.Printf("write error to %v: %v", other.RemoteAddr(), err)
+			if _, err := player2.Write([]byte("You lose!\n")); err != nil {
+				log.Printf("write error to %v: %v", player2.RemoteAddr(), err)
 			}
-			fmt.Printf("Player %s wins!\n", w)
+			fmt.Printf("Player %s wins!\n", winner)
 			break
 		}
 
 		if b.isFull() {
-			writeBoth("It's a draw!\n")
+			writeBothPlayers("It's a draw!\n")
 			fmt.Println("Game ended in a draw")
 			break
 		}
@@ -141,5 +141,5 @@ func handlePlayAgain(conn net.Conn, l *lobby) {
 		return
 	}
 
-	run(opponent, conn, l)
+	startGame(opponent, conn, l)
 }
